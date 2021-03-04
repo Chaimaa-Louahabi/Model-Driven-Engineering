@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<petriNet:PetriNet
+    xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:petriNet="http://www.example.org/petriNet"
+    xsi:schemaLocation="http://www.example.org/petriNet petriNet.ecore">
+  <arcs nbrJetons="1"
+      target="//@elements.1"
+      source="//@elements.0"/>
+  <elements
+      xsi:type="petriNet:Place"
+      name="p1"
+      nbrJetons="1"/>
+  <elements
+      xsi:type="petriNet:Place"
+      name="p2"
+      nbrJetons="1"/>
+</petriNet:PetriNet>

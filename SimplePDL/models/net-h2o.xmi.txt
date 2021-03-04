@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<petriNet:PetriNet
+    xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:petriNet="http://petriNetMetamodel"
+    name="H2O">
+  <arcs nbrJetons="1"
+      target="//@elements.1"
+      source="//@elements.0"/>
+  <arcs nbrJetons="2"
+      target="//@elements.2"
+      source="//@elements.1"/>
+  <arcs nbrJetons="1"
+      target="//@elements.3"
+      source="//@elements.1"/>
+  <arcs nbrJetons="1"
+      target="//@elements.4"
+      source="//@elements.3"/>
+  <arcs nbrJetons="2"
+      target="//@elements.4"
+      source="//@elements.2"/>
+  <arcs nbrJetons="1"
+      target="//@elements.0"
+      source="//@elements.4"/>
+  <elements
+      xsi:type="petriNet:Place"
+      name="H2O"
+      arcsIn="//@arcs.5"
+      arcsOut="//@arcs.0"
+      nbrJetons="1"/>
+  <elements
+      xsi:type="petriNet:Transition"
+      name="split"
+      arcsIn="//@arcs.0"
+      arcsOut="//@arcs.1 //@arcs.2"/>
+  <elements
+      xsi:type="petriNet:Place"
+      name="H"
+      arcsIn="//@arcs.1"
+      arcsOut="//@arcs.4"/>
+  <elements
+      xsi:type="petriNet:Place"
+      name="O"
+      arcsIn="//@arcs.2"
+      arcsOut="//@arcs.3"/>
+  <elements
+      xsi:type="petriNet:Transition"
+      name="combine"
+      arcsIn="//@arcs.3 //@arcs.4"
+      arcsOut="//@arcs.5"/>
+</petriNet:PetriNet>

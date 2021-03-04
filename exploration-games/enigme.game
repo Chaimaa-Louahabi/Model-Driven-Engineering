@@ -1,0 +1,34 @@
+game {
+	player anonyme { 
+		capacity= 2; current place = Enigme 
+	}
+	place Enigme {
+		type = begin
+		has 
+			(knowledge Reussite state V);
+			(obj Tentative mesure 3 state V);
+			(person Sphinx state V if {~Reussite and Tentative >= 1} 
+				qualified with "Combien de gouttes d’eau peut-on mettre dans un verre vide"
+			)
+		allocate 2 of Tentative to anonyme 
+		
+		interact with Sphinx {
+			choice answer [act reponse1 : qualified with "une"; 
+						act reponse2 : qualified with "deux";
+						act reponse3: qualified with "trois" ]
+			
+			if reponse1 then gain Reussite 
+			if reponse2 then consume 1 of Tentative
+			if reponse3 then consume 1 of Tentative
+		}
+		
+		path from Enigme to Succes open if {Reussite}
+		path from Enigme to Echec open if {Tentative = 0}
+	}
+	place Succes {
+		type = end
+	}
+	place Echec {
+		type = end
+	}
+}

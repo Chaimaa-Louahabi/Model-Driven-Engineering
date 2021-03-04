@@ -1,0 +1,23 @@
+net petrinet
+pl Start (1)
+pl End (0)
+pl Enigme (1)
+pl Success (0)
+pl Echec (0)
+pl Tentative (2)
+pl Reussite (0)
+pl answer (0)
+pl Reponse1 (0)
+pl Reponse2 (0)
+pl Reponse3 (0)
+pl Anonyme_Tentatives (0)
+pl allocate_Tentative_done (0)
+tr go_To_Enigme Start*1 allocate_Tentative_done*1 -> Enigme
+tr go_To_Success Enigme*1 Reussite?1 -> End Success
+tr go_To_Echec Enigme*1 Anonyme_Tentatives?-1 -> End Echec
+tr t_Reponse1 answer?1 Anonyme_Tentatives*1 -> Reponse1 Reussite
+tr t_Reponse2 answer?1 Anonyme_Tentatives*1 -> Reponse2
+tr t_Reponse3 answer?1 Anonyme_Tentatives*1 -> Reponse3
+tr interact_with_Sphinx Enigme*1 -> answer
+tr allocate_Tentative_To_Anonyme Tentative*2 -> allocate_Tentative_done Anonyme_Tentatives*2
+

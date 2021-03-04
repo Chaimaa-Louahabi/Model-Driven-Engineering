@@ -1,0 +1,125 @@
+module SimplePDL2PetriNet;
+create OUT: petrinet from  IN: simplepdl;
+
+-- Obtenir le processus qui contient ce process element.
+-- Remarque: Ce helper ne serait pas utile si une r�f�rence opposite
+-- avait �t� plac�e entre Process et ProcessElement
+helper context simplepdl!ProcessElement
+def: getProcess(): simplepdl!Process =
+	simplepdl!Process.allInstances()
+		->select(p | p.processElements->includes(self))
+		->asSequence()->first();
+
+
+-- Traduire un Process en un PetriNet de même nom
+rule Process2PetriNet {
+	from p: simplepdl!Process
+	to pn: petrinet!PetriNet (name <- p.name)
+}
+
+-- Traduire une WorkDefinition en un motif sur le réseau de Petri
+rule WorkDefinition2PetriNet {
+	from wd: simplepdl!WorkDefinition
+	to
+		-- PLACES d'une WorkDefinition
+		p_ready: petrinet!Place(
+				name <- wd.name + '_ready',
+				nbrJetons <- 1),
+		p_started: petrinet!Place(
+				name <- wd.name + '_started',
+				nbrJetons <- 0),
+		p_running: petrinet!Place(
+				name <- wd.name + '_running',
+				nbrJetons <- 0),
+		p_finished: petrinet!Place(
+				name <- wd.name + '_finished',
+				nbrJetons <- 0),
+		-- TRANSITIONS d'une workDefinition
+		t_start: petrinet!Transition(
+				name <- wd.name + '_start'),
+		t_finish: petrinet!Transition(
+				name <- wd.name + '_finish'),
+		-- ARCS d'une workDefinition
+		a_ready_start: petrinet!Arc(
+			    nbrJetons <- 1,
+				source <- p_ready,
+				target <- t_start),
+		a_start_started: petrinet!Arc(
+			    nbrJetons <- 1,
+				source <- t_start,
+				target <- p_started),
+		a_start_running: petrinet!Arc(
+			    nbrJetons <- 1,
+				source <- t_start,
+				target <- p_running),
+		a_running_finish: petrinet!Arc(
+			    nbrJetons <- 1,
+				source <- p_running,
+				target <- t_finish),
+		a_finish_finished: petrinet!Arc(
+			    nbrJetons <- 1,
+				source <- t_finish,
+				target <- p_finished)
+		do {
+			thisModule.resolveTemp(wd.getProcess(),'pn').elements <- p_ready;
+			thisModule.resolveTemp(wd.getProcess(),'pn').elements <- p_started;
+			thisModule.resolveTemp(wd.getProcess(),'pn').elements <- p_running;
+			thisModule.resolveTemp(wd.getProcess(),'pn').elements <- p_finished;
+			thisModule.resolveTemp(wd.getProcess(),'pn').elements <- t_start;
+			thisModule.resolveTemp(wd.getProcess(),'pn').elements <- t_finish;
+			thisModule.resolveTemp(wd.getProcess(),'pn').arcs <- a_ready_start;
+			thisModule.resolveTemp(wd.getProcess(),'pn').arcs <- a_start_started;
+			thisModule.resolveTemp(wd.getProcess(),'pn').arcs <- a_start_running;
+			thisModule.resolveTemp(wd.getProcess(),'pn').arcs <- a_running_finish;
+			thisModule.resolveTemp(wd.getProcess(),'pn').arcs <- a_finish_finished;
+		}		
+}
+-- Traduire une WorkSequence en un motif sur le réseau de Petri
+rule WorkSequence2PetriNet {
+	from ws: simplepdl!WorkSequence
+	to
+		a : petrinet!Arc(
+				nbrJetons <- 1,
+				type <- #read_arc,
+				source <- thisModule.resolveTemp(ws.predecessor,
+					if((ws.linkType = #finishToStart) or (ws.linkType = #finishToFinish))
+						then 'p_finished'
+						else 'p_started'
+					endif),
+				target <- thisModule.resolveTemp(ws.successor,
+					if((ws.linkType = #startToFinish) or (ws.linkType = #finishToFinish))
+						then 't_finish'
+						else 't_start'
+					endif))
+			do {
+				thisModule.resolveTemp(ws.getProcess(),'pn').arcs <- a;
+			}
+}
+					
+-- Traduire une RESOURCE en un motif sur le réseau de Petri
+rule Resource2PetriNet {
+	from resource: simplepdl!Resource
+	to
+		p_resource : petrinet!Place(
+				name <- resource.name,
+				nbrJetons <- resource.occur_nbr)
+		do {
+			thisModule.resolveTemp(resource.getProcess(),'pn').elements <- p_resource;
+		}
+}
+rule Allocation2PetriNet {
+	from allocation : simplepdl!Allocation
+	to
+		a_resource_start : petrinet!Arc(
+			nbrJetons <- allocation.count,
+			source <- thisModule.resolveTemp(allocation.resource, 'p_resource'),
+			target <- thisModule.resolveTemp(allocation.workdefinition, 't_start')),
+		a_finish_resource : petrinet!Arc(
+			nbrJetons <- allocation.count,
+			source <- thisModule.resolveTemp(allocation.workdefinition, 't_finish'),
+			target <- thisModule.resolveTemp(allocation.resource, 'p_resource'))
+		do {
+			thisModule.resolveTemp(allocation.resource.getProcess(),'pn').arcs <- a_resource_start;
+			thisModule.resolveTemp(allocation.resource.getProcess(),'pn').arcs <- a_finish_resource;
+		}
+}

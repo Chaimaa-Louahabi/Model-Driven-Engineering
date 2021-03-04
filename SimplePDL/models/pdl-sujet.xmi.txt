@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<simplepdl:Process xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:simplepdl="http://simplepdl" name="developpement">
+  <processElements xsi:type="simplepdl:WorkDefinition" linksToSuccessors="//@processElements.4 //@processElements.5 //@processElements.6 //@processElements.7" name="Conception">
+    <resources count="2" resource="//@processElements.9" workdefinition="//@processElements.0"/>
+    <resources count="2" resource="//@processElements.11" workdefinition="//@processElements.0"/>
+  </processElements>
+  <processElements xsi:type="simplepdl:WorkDefinition" linksToPredecessors="//@processElements.6" linksToSuccessors="//@processElements.8" name="Programmation">
+    <resources count="2" resource="//@processElements.10" workdefinition="//@processElements.1"/>
+    <resources count="3" resource="//@processElements.11" workdefinition="//@processElements.1"/>
+  </processElements>
+  <processElements xsi:type="simplepdl:WorkDefinition" linksToPredecessors="//@processElements.7 //@processElements.8" name="RedactionTests">
+    <resources count="2" resource="//@processElements.11" workdefinition="//@processElements.2"/>
+    <resources count="1" resource="//@processElements.13" workdefinition="//@processElements.2"/>
+  </processElements>
+  <processElements xsi:type="simplepdl:WorkDefinition" linksToPredecessors="//@processElements.4 //@processElements.5" name="RedactionDocs">
+    <resources count="1" resource="//@processElements.12" workdefinition="//@processElements.3"/>
+    <resources count="1" resource="//@processElements.11" workdefinition="//@processElements.3"/>
+  </processElements>
+  <processElements xsi:type="simplepdl:WorkSequence" linkType="finishToFinish" predecessor="//@processElements.0" successor="//@processElements.3"/>
+  <processElements xsi:type="simplepdl:WorkSequence" predecessor="//@processElements.0" successor="//@processElements.3"/>
+  <processElements xsi:type="simplepdl:WorkSequence" linkType="finishToStart" predecessor="//@processElements.0" successor="//@processElements.1"/>
+  <processElements xsi:type="simplepdl:WorkSequence" predecessor="//@processElements.0" successor="//@processElements.2"/>
+  <processElements xsi:type="simplepdl:WorkSequence" linkType="finishToFinish" predecessor="//@processElements.1" successor="//@processElements.2"/>
+  <processElements xsi:type="simplepdl:Resource" name="Concepteur" occur_nbr="3"/>
+  <processElements xsi:type="simplepdl:Resource" name="developpeur" occur_nbr="2"/>
+  <processElements xsi:type="simplepdl:Resource" name="machine" occur_nbr="4"/>
+  <processElements xsi:type="simplepdl:Resource" name="redacteur" occur_nbr="1"/>
+  <processElements xsi:type="simplepdl:Resource" name="testeur" occur_nbr="2"/>
+  <processElements xsi:type="simplepdl:Guidance" text="Ne jamais commencer la programmation avant de finir la conception ;)" Elements="//@processElements.1 //@processElements.0"/>
+</simplepdl:Process>

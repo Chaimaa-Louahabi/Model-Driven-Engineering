@@ -1,0 +1,47 @@
+import 'SimplePDL.ecore'
+
+package simplepdl
+
+context Process
+inv validName('Invalid Process name: ' + self.name):
+	self.name.matches('[A-Za-z_][A-Za-z0-9_]*')
+inv uniqueWorkDefinitionNames: self.processElements
+	->select(p| p.oclIsKindOf(WorkDefinition))
+	->collect(w|w.oclAsType(WorkDefinition))
+	->forAll(p1, p2  |p1.name<>p2.name or p1=p2 )
+	
+inv uniqueResourceNames: self.processElements
+	->select(p| p.oclIsKindOf(Resource))
+	->collect(w|w.oclAsType(Resource))
+	->forAll(r1, r2  |r1.name<>r2.name or r1=r2 )
+	
+	
+context ProcessElement
+def: process(): Process =
+	Process.allInstances()
+		->select(p | p.processElements->includes(self))
+		->asSequence()->first()
+		
+context WorkDefinition
+inv validName('Invalid workDefinition name: ' + self.name):
+	self.name.matches('[A-Za-z_][A-Za-z0-9_]*')
+
+			
+context Resource
+inv validName('Invalid Resource name: ' + self.name):
+	self.name.matches('[A-Za-z_][A-Za-z0-9_]*')
+--A resource's allocation  must be less than its occurrence
+inv AllocationIsLessThanResourceOccurence: self.Allocation -> forAll(a : Allocation | a.count <= self.occur_nbr ) 
+
+
+context WorkSequence
+inv successorAndPredecessorInSameProcess('Activities not in the same process : '
+		+ self.predecessor.name + ' in ' + self.predecessor.process().name+ ' and '
+		+ self.successor.name + ' in ' + self.successor.process().name
+):self.process() = self.successor.process() and self.process() = self.predecessor.process()
+
+inv successorAndPredecessorAreDifferent('Successor and predecessor are not different : ' + self.predecessor.name):
+	self.predecessor <> self.successor
+
+
+endpackage

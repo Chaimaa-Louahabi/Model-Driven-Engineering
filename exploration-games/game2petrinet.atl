@@ -1,0 +1,308 @@
+module SimplePDL2PetriNet;
+create OUT: petrinet from  IN: game;
+
+-- obtenir la place source d'un chemin
+helper context game!Path
+def: getPlace(): game!Place =
+	game!Path.src;
+-- Obtenir le game qui contient ce lieu.
+helper context game!Place
+def: getGame(): game!Game =
+	game!Game.allInstances()
+		->select(p | p.gamePlaces->includes(self))
+		->asSequence()->first();
+
+-- Obtenir le lieu qui contient cette personne ou objet.
+helper context game!PlaceObject
+def: getPlace(): game!Place = 
+	game!Place.allInstances()
+		->select(p | p.placeObjects->includes(self))
+		->asSequence()->first();
+--Obtenir la place où l'allocation est faite
+helper context game!Allocation
+def: getPlace(): game!Place =
+	game!Place.allInstances()
+		->select(p | p.allocations->includes(self))
+		->asSequence()->first();
+-- obtenir le lieu où se droule l'interaction
+helper context game!Interaction
+def: getPlace(): game!Place =
+	game!Place.allInstances()
+		->select(p | p.interactions->includes(self))
+		->asSequence()->first();
+--Obtenir l'interaction dans laquelle apparaît ce choix
+helper context game!Choice
+def: getInteraction(): game!Interaction =
+	game!Interaction.allInstances()
+		->select(p | p.choices->includes(self))
+		->asSequence()->first();
+--Obtenir le choix dans laquelle apparaît cette action
+helper context game!Action
+def: getChoice(): game!Interaction =
+	game!ActionsChoice.allInstances()
+		->select(p | p.actions->includes(self))
+		->asSequence()->first();
+helper context game!GainObject
+def: getActionEffect(): game!ActionEffect =
+	game!ActionEffect.allInstances()
+		->select(p | p.gainObj->includes(self))
+		->asSequence()->first();
+helper context game!GainKnowledge
+def: getActionEffect(): game!ActionEffect =
+	game!ActionEffect.allInstances()
+		->select(p | p.gainKn->includes(self))
+		->asSequence()->first();
+helper context game!Consommation
+def: getActionEffect(): game!ActionEffect =
+	game!ActionEffect.allInstances()
+		->select(p | p.consommations->includes(self))
+		->asSequence()->first();
+helper context game!Object
+def: getAllocation() : game!Allocation = 
+	game!Allocation.allInstances()
+	->select(p | p.obj= self)
+	->asSequence()->first();
+helper context game!ConditionElement
+def: getPath(): game!Allocation =
+	game!Path.allInstances()
+	->select(p | p.OpenCond.condElements->includes(self))
+	->asSequence()->first();
+helper context game!Place
+def: getNbrInteractiosn():Integer=
+	self.interactions ->size();
+-- Traduire un Game en un PetriNet 
+rule Game2PetriNet {
+	from game:game!Game
+ 	to 
+	pn: petrinet!PetriNet (name <- 'petrinet'),
+	p_start: petrinet!Place(
+		name <- 'Start',
+		nbrJetons <- 1),
+	p_end: petrinet!Place(
+		name <- 'End',
+		nbrJetons<- 0)
+		do {
+			pn.elements <- p_start;
+			pn.elements <- p_end;
+		}
+}
+--Traduire un lieu du jeu en un motif sur le réseau de Petri
+rule PlaceToPetriNet {
+	from place: game!Place
+	to
+		p_place : petrinet!Place(
+				name <- place.name,
+				nbrJetons <- place.getNbrInteractiosn()),
+		t_goToPlace : petrinet!Transition(
+			name<-'go_To_' + place.name),
+		a_start_or_end: petrinet!Arc(
+			nbrJetons <- 1,
+			source <- if (place.placeType = #end) then
+						t_goToPlace
+					  else  thisModule.resolveTemp(place.getGame(),'p_start') endif,
+			target <- if (place.placeType = #end) then thisModule.resolveTemp(place.getGame(),'p_end')
+					  else t_goToPlace endif
+			),
+		a_t_p: petrinet!Arc(
+			nbrJetons <- 1,
+			source <- t_goToPlace,
+			target <- p_place)
+	do {
+		thisModule.resolveTemp(place.getGame(),'pn').elements <- p_place;
+		thisModule.resolveTemp(place.getGame(),'pn').elements <- t_goToPlace;
+		thisModule.resolveTemp(place.getGame(),'pn').arcs <- a_start_or_end;
+		thisModule.resolveTemp(place.getGame(),'pn').arcs <- a_t_p;
+	}
+}
+
+--traduire un chemin en un motif sur le réseau de Petri
+rule PathToPetriNet {
+	from path: game!Path
+	to
+		a_src_trans: petrinet!Arc(
+			    nbrJetons <- 1,
+				source <- thisModule.resolveTemp(path.src, 'p_place'),
+				target <- thisModule.resolveTemp(path.destination, 't_goToPlace'))
+		do {
+			thisModule.resolveTemp(path.src.getGame(),'pn').arcs <- a_src_trans;
+		}
+}
+rule ObjectToPetriNet {
+	from object: game!Object
+	to
+		obj_place: petrinet!Place(
+			name <- object.name,
+			nbrJetons <- object.size)
+	do {
+		thisModule.resolveTemp(object.getPlace().getGame(),'pn').elements <- obj_place;
+	}
+}
+rule KnowledgeToPetrNet {
+	from kn: game!Knowledge
+	to
+		p: petrinet!Place(
+			name<- kn.name,
+			nbrJetons <- 0)
+	do {
+		thisModule.resolveTemp(kn.getPlace().getGame(),'pn').elements <- p;
+	}
+}
+
+rule ActionsChoiceToPetriNet {
+	from choix: game!ActionsChoice
+	to
+		choice_place:petrinet!Place(
+			name <- choix.name,
+			nbrJetons <- 0),
+		a_person_choix:petrinet!Arc(
+			nbrJetons <- 1,
+			source <- thisModule.resolveTemp(choix.getInteraction(), 'interaction_trans'),
+			target <- choice_place)
+		do {
+			thisModule.resolveTemp(choix.getInteraction().getPlace().getGame(),'pn').arcs <-a_person_choix;
+			thisModule.resolveTemp(choix.getInteraction().getPlace().getGame(),'pn').elements <-choice_place;
+		}
+}
+rule ActionToPetriNet {
+	from action: game!Action
+	to
+		action_place : petrinet!Place(
+			name <- action.name,
+			nbrJetons <- 0),
+		action_transition : petrinet!Transition(
+				name <- 't_' + action.name),
+		a_choice_transiAction : petrinet!Arc(
+			type <- #read_arc,
+			nbrJetons <- 1,
+			source <- thisModule.resolveTemp(action.getChoice(), 'choice_place'),
+			target <- action_transition),
+		a_transiAction_placeAction : petrinet!Arc(
+			nbrJetons <- 1,
+			source <- action_transition,
+			target <- action_place)
+	do {
+		thisModule.resolveTemp(action.getChoice().getInteraction().getPlace().getGame(),'pn').elements <-action_place;
+		thisModule.resolveTemp(action.getChoice().getInteraction().getPlace().getGame(),'pn').elements <-action_transition;
+		thisModule.resolveTemp(action.getChoice().getInteraction().getPlace().getGame(),'pn').arcs <-a_transiAction_placeAction;
+		thisModule.resolveTemp(action.getChoice().getInteraction().getPlace().getGame(),'pn').arcs <-a_choice_transiAction;
+	}
+}
+--Traduire une interactionavec une personne, en éléments de petrinet. 
+rule InteractionToPetriNet {
+	from interaction: game!Interaction
+	to
+		interaction_trans: petrinet!Transition(
+			name <- 'interact_with_'  + interaction.person.name),
+		a_place_interact : petrinet!Arc(
+			nbrJetons <- 1,
+			type <- #read_arc,
+			source <-thisModule.resolveTemp(interaction.getPlace(),'p_place') ,
+			target <- interaction_trans)
+	do {
+		thisModule.resolveTemp(interaction.getPlace().getGame(),'pn').elements <-interaction_trans;
+		thisModule.resolveTemp(interaction.getPlace().getGame(),'pn').arcs <-a_place_interact;
+	}
+}
+rule GainObjectToPetriNet {
+	from gain: game!GainObject
+	to
+		a_obj_trAction : petrinet!Arc(
+			nbrJetons <- gain.count,
+			source <- thisModule.resolveTemp(gain.getActionEffect().ChosenAction,'action_transition'),
+			target <- thisModule.resolveTemp(gain.objet.getAllocation(),'p_player_objects'))
+		do {
+			thisModule.resolveTemp(gain.getActionEffect().ChosenAction.getChoice().getInteraction().getPlace().getGame(),'pn').arcs <- a_obj_trAction;
+		}
+}
+rule GainKnowledgeToPetriNet {
+	from gain: game!GainKnowledge
+	to
+		a_kn_trAction : petrinet!Arc(
+			nbrJetons <- 1,
+			source <- thisModule.resolveTemp(gain.getActionEffect().ChosenAction,'action_transition'),
+			target <- thisModule.resolveTemp(gain.kn ,'p'))
+		do {
+			thisModule.resolveTemp(gain.getActionEffect().ChosenAction.getChoice().getInteraction().getPlace().getGame(),'pn').arcs <- a_kn_trAction;
+		}
+}
+rule ConsommationToPetriNet {
+	from consommation: game!Consommation
+	to
+		a_trAction_obj : petrinet!Arc(
+			nbrJetons <- consommation.count,
+			source <- thisModule.resolveTemp(consommation.objet.getAllocation(),'p_player_objects'),
+			target <- thisModule.resolveTemp(consommation.getActionEffect().ChosenAction,'action_transition'))
+		do {
+			thisModule.resolveTemp(consommation.getActionEffect().ChosenAction.getChoice().getInteraction().getPlace().getGame(),'pn').arcs <- a_trAction_obj;
+		}
+}
+rule AllocationToPetriNet {
+	from allocation: game!Allocation
+	to
+	t_allocate : petrinet!Transition(
+		name <- 'allocate_' + allocation.obj.name +'_To_'+ allocation.player.name),
+	a_obj_t : petrinet!Arc(
+			nbrJetons <- allocation.count,
+			source <- thisModule.resolveTemp(allocation.obj, 'obj_place'),
+			target <- t_allocate),
+	p_all_done : petrinet!Place(
+		name <- 'allocate_' + allocation.obj.name + '_done',
+		nbrJetons <- 0),
+	p_player_objects : petrinet!Place(
+		name <- allocation.player.name +'_' +allocation.obj.name+'s' ,
+		nbrJetons <- 0),
+	a_t_done : petrinet!Arc(
+			nbrJetons <- 1,
+			source <- t_allocate,
+			target <- p_all_done),
+	a_t_player : petrinet!Arc(
+			nbrJetons <- allocation.count,
+			source <- t_allocate,
+			target <- p_player_objects),
+	a_done_transLieu : petrinet!Arc(
+		nbrJetons <-1,
+		source<-p_all_done,
+		target <- thisModule.resolveTemp(allocation.getPlace(),'t_goToPlace'))
+	do {
+		thisModule.resolveTemp(allocation.player.currentPlace.getGame(),'pn').elements <- t_allocate;
+		thisModule.resolveTemp(allocation.player.currentPlace.getGame(),'pn').arcs <- a_obj_t;
+		thisModule.resolveTemp(allocation.player.currentPlace.getGame(),'pn').arcs <-a_t_done;
+		thisModule.resolveTemp(allocation.player.currentPlace.getGame(),'pn').arcs <- a_t_player;
+		thisModule.resolveTemp(allocation.player.currentPlace.getGame(),'pn').arcs <- a_done_transLieu;
+		thisModule.resolveTemp(allocation.player.currentPlace.getGame(),'pn').elements <- p_player_objects;
+		thisModule.resolveTemp(allocation.player.currentPlace.getGame(),'pn').elements <-p_all_done;
+	}
+}
+rule KnConditionToPetriNet{
+	from cond : game!KnowledgeCond
+	to
+		arc: petrinet!Arc(
+			type <- #read_arc,
+			nbrJetons <- 1,
+			source <- cond.kn,
+			target <- thisModule.resolveTemp(cond.getPath().destination, 't_goToPlace'))
+		do {
+			thisModule.resolveTemp(cond.getPath().destination.getGame(),'pn').arcs <-arc;
+		}
+}
+rule ComparisonToPetriNet{
+	from cond : game!Comparaison
+	to
+		arc: petrinet!Arc(
+			type <- if (cond.op=#More or cond.op=#MEq or cond.op=#Eq)then 
+						if (cond.op=#Eq and cond.cte=0) then
+						#inhibitor else #read_arc
+						endif
+					else #inhibitor
+					endif,
+			nbrJetons <- if (cond.cte = 0) then 1
+						 else 
+						 		if(cond.op=#LEq or cond.op= #More) then cond.cte +1
+						 		else cond.cte endif
+						 endif,
+			source <- thisModule.resolveTemp(cond.obj.getAllocation(),'p_player_objects'),
+			target <- thisModule.resolveTemp(cond.getPath().destination, 't_goToPlace'))
+		do {
+			thisModule.resolveTemp(cond.getPath().destination.getGame(),'pn').arcs <-arc;
+		}
+}

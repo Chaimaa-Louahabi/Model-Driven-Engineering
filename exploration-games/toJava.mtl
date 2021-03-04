@@ -1,0 +1,778 @@
+[comment encoding = UTF-8 /]
+[module toJava('http://www.Game.mygame')]
+
+
+[template public gameToJava(aGame : Game)]
+[comment @main/]
+[file (aGame.name  + '.java', false, 'UTF-8')]
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
+
+
+public class[aGame.name/] {
+     private static boolean gameEnded = false;
+	 private static boolean gameWinned = false;
+	 private static Scanner in = new Scanner(System.in);
+	   
+     // name of the game  
+     String nameGame = "[aGame.name/]";
+    
+     // Explorateur = Player
+	 static Player [aGame.player.name/] = new Player("[aGame.player.name/]");
+
+	 //Places
+	 [for (place : Place | aGame.gamePlaces)]
+     static Place [place.name/] = new Place("[place.name/]");
+	 static ArrayList<Path> [place.name/]_paths = new ArrayList<Path>();
+	 static ArrayList<Person> [place.name/]_persons = new ArrayList<Person>();
+	 [/for]
+		
+	 //Paths
+	 [for (path : Path | aGame.gamePlaces.paths)]
+	 static Path [path.name/] = new Path("[path.name/]","[path.src.name/],"[path.destination.name/]");
+	 [/for]
+		
+	 //Persons
+	 [for (person : Person | aGame.gamePlaces.interactions.person)]
+	 static Interaction interaction_[person.name/] = new Interaction();
+	 static Person [person.name/] = new Person("[person.name/]");
+	 [/for]
+
+     
+
+     private static void initializePersons() {
+			[for (person : Person | aGame.gamePlaces.interactions.person)]
+			// interaction [person.name/] 
+			ArrayList<Action> actions_[person.name/] = new ArrayList<Action>();
+			[for (actionEffect : ActionEffect | aGame.gamePlaces.interactions.ActionsChoice.effects)]
+			Action [actionEffect.ChosenAction.name/] = new Action("[actionEffect.ChosenAction.name/]");
+			[for (knowledge : GainKnowledge | actionEffect.gainKn)]
+			[actionEffect.ChosenAction.name/].getTransmittedKnowledges().add(knowledge);
+			[/for]
+			[for (object : GainObject| actionEffect.gainObj)]
+			[actionEffect.ChosenAction.name/].getTransmittedObjects().add(object);
+			[/for]
+			[for (conso : Consommation | actionEffect.consommations)]
+			[actionEffect.ChosenAction.name/].getConsommation().add(conso);
+			[/for]
+			actions_[person.name/].add([actionEffect.ChosenAction.name/]));
+			[/for]
+			ActionsChoice choice_[person.name/] = new ActionsChoice(actions_[person.name/]);
+			interaction_[person.name/] = new Interaction([aGame.gamePlaces.interactions.choices.name/],choice_[person.name/]); ////// action choice
+			[person.name/].setInteraction(interaction_[person.name/]);
+			[person.name/].setVisible([person.state.visible/]);                                    //// visible = 0 comment faire ?
+			[/for]
+	}
+
+	private static void initializePaths() {
+		[for (path : Path | aGame.gamePlaces.paths)]
+		[path.name/].setOpen([path.state.open/]);       //// state = open = 0 comment faire ?                 
+		[/for]
+	}
+
+	private static void initializePlaces() {
+		[for (place : Place | aGame.gamePlaces)]
+		// initialisePlace_[place.name/]
+		[for (path : Path| place.paths.src)]
+		[place.name/]_paths.add([path.name/]);
+		[/for]
+		[for (person : Person | place.interactions.person)]
+		[place.name/]_persons.add([place.name/]);
+		[/for]
+		[place.name/].setChemins([place.name/]_chemins);
+		[place.name/].setPersons([place.name/]_persons);
+		[/for]
+	}
+
+	private initializeConditions() {
+		
+	}
+
+	private static void initializeGame() {
+		initializePersons();
+		initializePaths();
+		initializePlaces();
+		initializeConditions();
+	}
+
+	private static void showDetails() {
+		System.out.println("Lieu courant : " + [aGame.player.name/].getcurrentPlace().getName());	
+	}
+
+	private static void showMenu() {
+		System.out.println("Que faire ?");
+		System.out.println("1 - Afficher les détails de l'inventaire");
+		System.out.println("2 - Afficher les détails du lieu courant ");
+		System.out.println("3 - Interagir avec une personne  ");
+		System.out.println("4 - Prendre un objet ");
+		System.out.println("5 - Déposer un objet ");
+		System.out.println("6 - Emprunter un chemin ");
+		System.out.println("7 - Quitter la partie  ");
+	}
+
+	private static int choose() {
+		int n;
+        n = in.nextInt();
+		return n;
+	}
+
+	private static void showInventoryDetails() {
+		System.out.print("Knowledges : ");
+		for(Knowledge kn : [aGame.player.name/].getKnowledges()) {
+			System.out.print(" - " + kn.getName());
+		}
+		System.out.println();
+		System.out.print("Objets : ");
+		for(Map.Entry<Object, Integer> entry : [aGame.player.name/].getObjects().entrySet()) {
+			System.out.print(" - " + "(" + entry.getValue() + "," + entry.getKey().getName()+ ")");
+		}
+		System.out.println();
+		System.out.print("Capacité : ");
+		System.out.println([aGame.player.name/].getMaxObjects());
+		System.out.println();
+	}
+
+	private static void showCurrentPlaceDetails() {
+		System.out.println([aGame.player.name/].getCurrentPlace().getPlaceType());
+		System.out.print("Personnes : ");
+		for(Person p : [aGame.player.name/].getCurrentPlace().getPersons()) {
+			System.out.print(" - " + p.getname());
+		}
+		System.out.println();
+	}
+	
+	private static ArrayList<Person> visiblePerson() {
+		ArrayList<Person> visiblePersons = new ArrayList<Person>();
+		ArrayList<Person> person = [aGame.player.name/].getCurrentPlace().getPersons();
+		for(Person per : person) {
+			if (per.isVisible()) {
+				visiblePersons.add(per);
+			}
+		}
+		return visiblePersons;			
+	}
+
+	private static void interactPerson() {
+		ArrayList<Person> visiblePersons = visiblePerson();
+		if (!visiblePersons.isEmpty()) {
+			System.out.println("Avec quel personne interagir ?");
+			for (int i = 0; i< visiblePersons.size(); i++) {
+				System.out.println(i + " - " + visiblePersons.get(i).getName());
+			}
+			Scanner person_id_sc = new Scanner(System.in);
+			int person_id = person_id_sc.nextInt();
+			[aGame.player.name/].interactPerson(visiblePersons.get(person_id));
+		}
+		else {
+			System.out.println("Pas de personne visible pour le moment.");
+		}
+	}
+
+	private static ArrayList<Path> visiblePath() {
+		ArrayList<Path> visiblePaths = new ArrayList<Path>();
+		ArrayList<Path> paths = [aGame.player.name/].getCurrentPlace().getPaths();
+		for(Path p : paths) {
+			if (p.isVisible()) {
+				visiblePaths.add(p);
+			}
+		}
+		return visiblePaths;	
+	}
+
+	private static void takePath() {
+		ArrayList<Path> visiblePaths = visiblePath();
+		if (!visiblePaths.isEmpty()) {
+			System.out.println("Quel chemin emprunter ?");
+			for (int i = 0; i<visiblePaths.size(); i++) {
+				System.out.println(i + " - " + visiblePaths.get(i).getName());
+			}
+			Scanner path_id_sc = new Scanner(System.in);
+			int path_id = chemin_id_sc.nextInt();
+			[aGame.player.name/].takePath(visiblePaths.get(path_id));
+		}
+		else {
+			System.out.println("Pas de chemin visible pour le moment.");
+		}
+		
+	}
+
+	private static void actionMenu(int n) {
+		switch (n) {
+			case 1 : showInventoryDetails();
+					break;
+			case 2 : showCurrentPlaceDetails();
+					break;
+			case 3 : interactPerson();
+					break;
+			case 4 :
+			case 5 :
+			case 6 : takePath();
+					break;
+			case 7 : System.out.println("Partie quittée");
+					System.exit(0);
+					break;		
+			default:		
+							
+		}
+	}
+
+	private static void actualize_visibility() {
+		enigme_succes.setVisible(enigme_succes_visible.knowledgeAcquired(explorateur));
+		enigme_echec.setVisible(enigme_echec_visible.nb_objects_exact(explorateur));
+	}
+
+
+	public static void main(String['[]'/] args) {
+		initializeGame();
+		while(!gameEnded) {
+			showDetails();
+			showMenu();
+			int n = choose();
+			actionMenu(n);
+			actualizeVisibility();
+			//actualizeInventory();
+		}	
+	}
+}
+
+
+
+
+
+[/file]
+[file ('Place.java', false, 'UTF-8')]
+	[classPlace()/]
+[/file]
+
+[file ('Player.java', false, 'UTF-8')]
+	[classPlayer()/]
+[/file]
+[file ('Objet.java', false, 'UTF-8')]
+	[classObject()/]
+[/file]
+[file ('Knowledge.java', false, 'UTF-8')]
+	[classKnowledge()/]
+[/file]
+[file ('Person.java', false, 'UTF-8')]
+	[classPerson()/]
+[/file]
+[file ('Path.java', false, 'UTF-8')]
+	[classPath()/]
+[/file]
+[file ('Interaction.java', false, 'UTF-8')]
+	[classInteraction()/]
+[/file]
+[file ('Choice.java', false, 'UTF-8')]
+	[classChoice()/]
+[/file]
+[file ('Action.java', false, 'UTF-8')]
+	[classAction()/]
+[/file]
+[file ('Condition.java', false, 'UTF-8')]
+	[classCondition()/]
+[/file]
+
+
+
+
+
+
+[/template]
+[template public classPlayer(t : OclAny)]
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
+
+public class Player {
+	private String name;
+	private HashMap<Object,Integer> objets = new HashMap<Object,Integer>();
+	private ArrayList<Knowledge> knowledges = new ArrayList<Knowledge>();
+	private Place currentPlace;
+	private int MaxObjects;  
+	
+	public Player(String s) {
+		setname(s);
+	}
+	
+	public Player(HashMap<Object,Integer> h, ArrayList<Knowledge> l, int c) {
+		this.objects = h;
+		this.knowledges = l;
+		this.setMaxObjects(c);
+	}
+	// ajoute n exemplaires de l'objet o à l'inventaire
+	public void addObject(Object o, int n) {
+		int i = n;
+		if (!objects.containsKey(o)) {
+			objects.put(o, 0);
+		}
+		while (MaxObjects >= 0 && i > 0) {
+			objects.put(o, objects.get(o) + 1);
+			MaxObjects -= o.getTaille();
+			i--;
+		}
+	}
+
+	public void takePath(Path p) {
+		this.currentPlace = p.getPlaceDestination();
+	}
+
+	public void interactPerson(Person per) {
+		int t;
+//		Interaction i = per.getInteraction();
+		//t = this.getObjects().get(tentative);
+//		i = per.getInteraction();
+//		System.out.println(i.getQuestion());
+		per.showInteraction();
+		Scanner s = new Scanner(System.in);
+		int action = s.nextInt();
+		
+		per.getInteraction().getChoice().getActions().get(action).consumeObject(this);
+		per.getInteraction().getChoice().getActions().get(action).attributeKnowledge(this);
+		per.getInteraction().getChoice().getActions().get(action).attributeObject(this);
+		
+		//per.getInteraction().getChoice().getActions().get(action).consuObject(this);
+//			//gameEnded = true;
+//			//gameWinned = true;
+//			this.getKnowledges().add(new Knowledge("Reussite"));
+//			//player.setcurrentPlace(succes);
+//			System.out.println("Bravo. Vous avez acquis la connaissance Reussite");
+//			//System.out.println("Vous avez gagné. Vous êtes dans le lieu Succès.");
+//			per.setVisible(false);
+//			//enigme_succes.setVisible(true);
+//		
+//		
+//			this.getObjects().put(tentative, t-1);
+//			if (player.getObjets().get(tentative) > 0) {
+//				System.out.println("Désolé. Mauvaise réponse. Vous avez encore " + 
+//						player.getObjects().get(tentative) + " tentatives.");
+//			
+//			else {
+//				sphinx.setVisible(false);
+//				enigme_echec.setVisible(true);
+//			}
+//		}
+	}
+
+
+	public HashMap<Object,Integer> getObjets() {
+		return objects;
+	}
+
+	public void setObjects(HashMap<Object,Integer> objects) {
+		this.objects = objects;
+	}
+
+	public ArrayList<Knowledge> getKnowledges() {
+		return knowledges;
+	}
+
+	public void setKnnowledges(ArrayList<Knowledge> knowledges) {
+		this.knowledges = knowledges;
+	}
+
+	public Lieu getCurrentPlace() {
+		return currentPlace;
+	}
+
+	public void setCurrentPlace(Place currentPlace) {
+		this.currentPlace = currentPlace;
+	}
+
+	public int getMaxObjects() {
+		return MaxObjects;
+	}
+
+	public void setMaxObjects(int MaxObjects) {
+		this.MaxObjects = MaxObjects;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+}
+
+[/template]
+
+[template public classObject(t : OclAny)]
+public class Objet {
+	private String name;
+	private int size;
+	
+	public Objet(String s, int t) {
+		this.setName(s);
+		this.setSize(t);
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public int getSize() {
+		return size;
+	}
+
+	public void setTaille(int size) {
+		this.size = size;
+	}
+}
+
+[/template]
+
+[template public classKnowledge(t : OclAny)]
+public class Knowledge {
+	private String name;
+	
+	public Knowledge(String s) {
+		this.setName(s);
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+}
+
+[/template]
+
+[template public classPerson(t : OclAny)]
+import java.util.ArrayList;
+import java.util.Scanner;
+
+public class Person {
+	private String name;
+	private Interaction interaction;
+	private boolean visible;
+	
+	public Person(String n) {
+		this.setName(n);
+	}
+	public Person(String n, Interaction i) {
+		this.setName(n);
+		this.setInteraction(i);
+	}
+	
+	public void showInteraction() {
+		System.out.println("Interaction avec la personne "+ this.name);
+		System.out.println(this.getInteraction().getName());
+		this.getInteraction().getChoice().showChoice();
+		
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+
+	public Interaction getInteraction() {
+		return interaction;
+	}
+
+	public void setInteraction(Interaction interaction) {
+		this.interaction = interaction;
+	}
+
+	public boolean isVisible() {
+		return visible;
+	}
+
+	public void setVisible(boolean visible) {
+		this.visible = visible;
+	}
+}
+
+
+[/template]
+[template public classPlace(t : OclAny)]
+import java.util.ArrayList;
+
+public class Place {
+	
+	private String name;
+	private ArrayList<Person> persons = new ArrayList<Person>();
+	private ArrayList<Path> paths = new ArrayList<Path>();
+	
+	public Path(String name) {
+		this.setName(name);
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public ArrayList<Person> getPersons() {
+		return persons;
+	}
+
+	public void setPersons(ArrayList<Person> persons) {
+		this.persons = persons;
+	}
+
+	public ArrayList<Path> getPaths() {
+		return chemins;
+	}
+
+	public void setPaths(ArrayList<Path> paths) {
+		this.paths = paths;
+	}
+	
+}
+
+[/template]
+[template public classPath(t : OclAny)]
+import java.util.ArrayList;
+
+public class Path {
+	private String name;
+	private Place src;
+	private Place destination;
+	private boolean visible;
+	private boolean state;
+	private ArrayList<Object> obCons = new ArrayList<Object>();
+	
+	public Path(String name, Place ls, Place ld) {
+		this.setPlaceSrc(ls);
+		this.setPlaceDestination(ld);
+		this.setName(name);
+	}
+	
+	public void setVisible(boolean b) {
+		this.visible = b;
+	}
+	
+	public boolean isVisible() {
+		return visible;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public Lieu getPlaceDestination() {
+		return destination;
+	}
+
+	public void setPlaceDestination(Place destination) {
+		this.destination = destination;
+	}
+
+	public Lieu getPlaceSrc() {
+		return src;
+	}
+
+	public void setPlaceSrc(Place source) {
+		this.src = source;
+	}
+
+	public ArrayList<Objet> getObConsumed() {
+		return obCons;
+	}
+
+	public void setObConsumed(ArrayList<Objet> obCons) {
+		this.obCons = obCons;
+	}
+	
+}
+
+[/template]
+[template public classInteraction(t : OclAny)]
+import java.util.ArrayList;
+
+public class Interaction {
+	private String name;
+	private Choix choice;
+	private ArrayList<Object> transmittedObjects = new ArrayList<Object>(); 
+	private ArrayList<Knowledge> transmittedKnowledge = new ArrayList<Knowledge>(); 
+	
+	public Interaction() {
+		
+	}
+	public Interaction(String q, Choix c) {
+		this.setName(q);
+		this.choice = c;
+	}
+	
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
+	}
+	
+
+	public Choix getChoice() {
+		return choice;
+	}
+
+	public void setChoice(Choice choice) {
+		this.choice = choice;
+	}
+}
+
+[/template]
+
+[template public classChoice(t : OclAny)]
+import java.util.ArrayList;
+
+public class Choice {
+	private ArrayList<Action> actions = new ArrayList<Action>(); 
+
+	public Choice(ArrayList<Action> actions) {
+		this.actions = actions;
+	}
+	
+	public void showChoices() {
+		for(Action a : this.actions) {
+			a.showActtion();
+		}
+	}
+	public ArrayList<Action> getActions() {
+		return actions;
+	}
+	public void setActions(ArrayList<Action> actions) {
+		this.actions = actions;
+	}
+	
+}
+
+[/template]
+
+[template public classAction(t : OclAny)]
+import java.util.ArrayList;
+import java.util.Map;
+
+public class Action {
+	private String name;
+	private ArrayList<Object> transmittedObjects = new ArrayList<Object>(); 
+	private ArrayList<Object> consumedObjects = new ArrayList<Object>();
+	private ArrayList<Knowledge> transmittedKnowledges = new ArrayList<Knowledge>();
+	
+	public Action(String s) {
+		this.name = s;
+	}
+	public void attributeKnowledge(Player exp) {
+		for(Knowledge c : transmittedKnowledges) {
+			exp.getKnowledges().add(c);
+			System.out.println("Connaissance \""+ c.getName() + "\" acquise" );
+		}
+	}
+	
+	public void objectConsumed(Player exp) {
+		for(Object o : c) {
+			for(Map.Entry<Object, Integer> entry : exp.getObjects().entrySet()) {
+				if (entry.getKey().getName().equals(o.getName())) {
+					entry.setValue(entry.getValue() - 1);
+					exp.setMaxObjects(exp.getMaxObjects() + entry.getKey().getSize());
+					System.out.println("Objet \""+ o.getName() + "\" consomme. Vous avez encore "+ entry.getValue()+
+							" "+o.getName());
+				}
+			}
+		}
+	}
+	
+	public void attribuer_objet(Player exp) {
+		boolean b;
+		for(Objet o : transmittedObjects) {
+			b = false;
+			for(Map.Entry<Object, Integer> entry : exp.getObjects().entrySet()) {
+				if (entry.getKey().getName().equals(o.getName())) {
+					entry.setValue(entry.getValue() + 1);
+					b = true;
+				}
+			}
+			if (!b) {
+				//exp.getObjects().put(new Object(o.getName()), 1);
+			}
+		}
+	}
+	
+	public void showAction() {
+		System.out.println(name);
+	}
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
+	}
+	public ArrayList<Object> getTransmittedObjects() {
+		return transmittedObjects;
+	}
+	public void setTransmittedObjects(ArrayList<Objet> transmittedObjects) {
+		this.transmittedObjects = transmittedObjects;
+	}
+	public ArrayList<Objet> getConsumedObjects() {
+		return consumedObjects;
+	}
+	public void setConsumedObjects(ArrayList<Objet> consumedObjects) {
+		this.consumedObjects = consumedObjects;
+	}
+	public ArrayList<Knowledge> getTransmittedKnowledges() {
+		return transmittedKnowledges;
+	}
+	public void setTransmittedKnowledges(ArrayList<Knowledge> transmittedKnowledges) {
+		this.transmittedKnowledges = transmittedKnowledges;
+	} 
+	
+}
+
+[/template]
+
+[template public classCondition(t : OclAny)]
+import java.util.ArrayList;
+
+public class Condition {
+	private String name;
+	private Object object;
+	private Knowledge knowledge;
+
+	
+	public Condition (String s, Knowledge k) {
+		setName(s);
+		knowledge = k;
+	}
+	public Condition (String s, Object o, int n) {
+		name = s;
+		object = o;
+	}
+	
+	public boolean acquiredKnowledge(Player exp) {
+		return exp.getKnowledges().contains(knowledge);
+		
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}	
+}
+
+[/template]

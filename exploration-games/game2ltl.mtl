@@ -1,0 +1,23 @@
+[comment encoding = UTF-8 /]
+[module gameToLTL('http://www.Game.mygame')]
+
+
+[template public gameToLTL(aGame : Game)]
+[comment @main/]
+[file ('game.ltl', false, 'UTF-8')]
+op finished = End /\ ([let endP : OrderedSet(Place) = aGame.getEndPlaces()]
+[for (p : Place | endP)]
+[if (p = endP->first())] [p.name/] [else]\/ [p.name/] [/if][/for][/let]);
+
+['['']'/] <> dead ;
+- <> finished;
+[/file]
+[/template]
+
+[query public getEndPlaces(g: Game) : OrderedSet(Place) = 
+	g.gamePlaces
+		->collect( e | e.oclAsType(Place))
+		->select( e | e.placeType= PlaceType::end)
+		->asOrderedSet()
+/]
+

@@ -1,0 +1,4 @@
+op finished = End /\ ( Success \/ Echec );
+
+[] <> dead ;
+- <> finished;

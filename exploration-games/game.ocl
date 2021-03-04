@@ -1,0 +1,64 @@
+import 'Game.ecore'
+
+package game
+
+context Game
+	inv NonNull_player('The \'player\' property is null'):
+		player <> null
+	inv NonNull_places('At least one of the places of the Game is null'):
+		gamePlaces->count(null) = 0
+			
+context Player
+	inv NonNull_playerName('The \'name\' property of Player is null'):
+		name <> null
+	inv NonEmpty_playerName('The \'name\' property of Player is empty'):
+		name <> ''	
+	inv NonNull_object('At least one of the items of the Game is null'):
+		currentPlace->count(null) = 0
+	inv NonNull_places('The \'name\' of the current place is null'):
+		currentPlace<>null
+		
+context Allocation
+	inv NonNull_object('At least one of the items of the Game is null'):
+		obj->count(null) = 0
+	inv SizeLimit_objects('The player has too many objects'):
+		player.maxObjects<=obj.size	
+		
+context Place
+	inv NonNull_placeName('The \'name\' property of Place is null'):
+		name <> null
+	inv NonEmpty_placeName('The \'name\' property of Place is empty'):
+		name <> ''
+
+context Interaction
+	inv	Interaction_Nedd_NonNull_Person('The \'person\' property of interaction is null'):
+	self.person <> null
+	
+context Path
+	inv SourceAndDestinationOfPathAreDifferent ('Path between '+ self.src.name  +'and himself !'):
+	self.destination <> self.src
+		
+context Knowledge
+	inv NonNull_knowledgeName('The \'name\' property of Knowledge is null'):
+		name <> null
+	inv NonEmpty_knowledgeName('The \'name\' property of Knowledge is empty'):
+		name <> ''			
+		
+context Action
+	inv NonNull_ActionName('The \'name\' property of Action is null'):
+		name <> null
+	inv NonEmpty_ActionName('The \'name\' property of Action is empty'):
+		name <> ''
+			
+context GainObject
+	inv NonNull_Object_Gain('The gain cant be zero !'):
+ 		self.count >= 1
+ 		
+ context Consommation
+ 	inv NonNull_Object_Consommation('The consommation cant be zero !'):
+ 		self.count >= 1
+ 		
+ context ActionEffect
+ 	inv Effect_Must_Include_Gain_Or_Consommation('This actionEffect as no effect ni gain nor consommation'):
+ 		self.gainKn ->size() >0 or self.consommations->size() >0 or gainObj->size() >0
+endpackage

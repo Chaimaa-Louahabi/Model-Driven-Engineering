@@ -1,0 +1,127 @@
+grammar mygame.Game with org.eclipse.xtext.common.Terminals
+
+generate game "http://www.Game.mygame"
+
+Game:
+	'game' '{'
+		player = Player
+		gamePlaces+=Place*
+	'}'
+;
+Player:
+	'player' name=ID '{'
+		'capacity' '=' maxObjects = INT ';'
+		'current' 'place' '=' currentPlace=[Place]
+		'}'
+;
+
+Place:
+	'place' name = ID '{'
+	'type' '=' placeType=PlaceType
+	('has' '(' placeObjects+=PlaceObject ')' (';' '('placeObjects+=PlaceObject ')')*)?
+	allocations+=Allocation*
+	interactions+=Interaction*
+	paths+=Path*
+	'}'
+;
+
+PlaceObject :
+	Knowledge | Object | Person
+;
+
+Path:
+	'path' 'from' src = [Place] 'to' destination = [Place] state = PathState ('if' OpenCond = Condition)? (qualification = Qualification)?
+	('{'gain+=Gain*
+		consommations+=Consommation*
+	'}')?
+;
+Person:
+	'person' name=ID 'state' state=ObjectState ('if' VisibilityCondition = Condition)? (qualification = Qualification)? 
+;
+
+Object:
+	'obj' name=ID 'mesure' size=INT 'state' state=ObjectState ('if' condition = Condition)? (qualification = Qualification)?
+;
+
+Knowledge:
+	'knowledge' name=ID 'state' state=ObjectState ('if' condition = Condition)? (qualification = Qualification)?
+;
+Allocation:
+	'allocate' count = INT 'of' obj=[Object] 'to' player=[Player]
+;
+Qualification :
+	'qualified' 'with' text=STRING 
+;
+Interaction:
+		('if' condition=Condition)? 'interact' 'with' person=[Person] '{'
+		choices+=Choice+
+		'}'
+;
+Consommation:
+		 'consume' count=INT 'of' objet=[Object]
+;
+Gain:
+	GainKnowledge| GainObject
+;
+
+GainObject:
+	'gain' count=INT 'of'objet=[Object]
+;
+GainKnowledge:
+	 'gain' kn = [Knowledge] ('if' condition = Condition)?
+;
+Condition :
+	'{' condElements+=ConditionElement (op+=OpLogique condElements+=ConditionElement)*'}'
+;
+ConditionElement:
+	KnowledgeCond | Comparaison
+;
+
+KnowledgeCond:
+	(op+=OpNegation)? kn=[Knowledge] 
+;
+Comparaison:
+	obj=[Object] op=OpComparaison cte =INT
+;
+Choice:
+	ActionsChoice |StartChoice | ExitChoice
+;
+
+ExitChoice:
+	 'exit' exit='true' ('if' condition = Condition)?
+;
+
+StartChoice:
+	 'start' start ='true' ('if' condition = Condition)?
+;
+ActionsChoice:
+	'choice' name=ID '[' actions+=Action (';'actions+=Action)*']'
+	effects+=ActionEffect*
+;
+ActionEffect:
+	'if' ChosenAction=[Action] 'then' (gainKn+= GainKnowledge | gainObj+= GainObject | consommations += Consommation)
+	('and' (gainKn+= GainKnowledge | gainObj+= GainObject | consommations += Consommation))*
+;
+Action:
+	('if' condition = Condition)? 'act' name = ID ':'(qualifacation= Qualification)?
+;
+enum OpLogique:
+	And ='and' | Or ='or'
+;
+enum OpNegation:
+	Not='~'
+;
+enum OpComparaison:
+	LEq ='<=' |Less ='<' | Eq='=' | More ='>' | MEq = '>='
+;
+enum PlaceType :
+	end = 'end' | begining = 'begin' | intermediate = 'inter'
+	
+	;
+enum PathState :
+	open = 'open' | closed = 'closed'
+	
+	;
+enum ObjectState:
+	visible = 'V' | invisible = 'nonV'
+;

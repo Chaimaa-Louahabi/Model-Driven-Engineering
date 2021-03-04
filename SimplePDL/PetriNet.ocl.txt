@@ -1,0 +1,32 @@
+import 'petriNet.ecore'
+package petriNet 
+
+context PetriNet
+inv validName('Invalid PetriNet name: ' + self.name):
+	self.name.matches('[A-Za-z_][A-Za-z0-9_]*')
+	---------------------------------
+inv UniquePlaceNames: self.elements
+	->select(p| p.oclIsKindOf(Place))
+	->forAll(p1, p2  |p1=p2 or p1.name<>p2.name)
+	----------------------------------
+inv UniqueTransitionNames: self.elements
+	->select(p| p.oclIsKindOf(Transition))
+	->forAll(t1, t2  |t1=t2 or t1.name<>t2.name)
+	
+	
+context Arc
+inv PoidsDArcSuperieurEgalA1 ('Le poids de l arc entre '+ self.source.name +' et ' + self.target.name):
+	self.nbrJetons >= 1 
+	----------------------------------
+inv PasDArcsEntrePlacesNiEntreTransitions ('L arc entre '+ self.source.name +' et ' + self.target.name):
+	self.target.oclType() <> self.source.oclType()
+	----------------------------------
+inv ReadArcDepuisPlaceVersTransitionSeulement('L arc entre '+ self.source.name +' et ' + self.target.name) : 
+	self.type = arcType::classic or (self.type = arcType::read_arc and self.source.oclIsKindOf(Place))
+
+context Element
+inv validName('Invalid name: ' + self.name): --pour transition et place
+	self.name.matches('[A-Za-z0-9_]+')
+	
+	
+endpackage
